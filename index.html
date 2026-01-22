@@ -50,6 +50,7 @@
     <meta name="theme-color" content="#020617">
     <meta name="msapplication-navbutton-color" content="#020617">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; overflow: hidden; }
         .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -94,6 +95,18 @@
 
     #mobile-menu-btn {
     display: none;
+}
+        @media (max-width: 768px) {
+    /* Cache le menu latéral sur mobile */
+    aside {
+        display: none; 
+    }
+    
+    /* On pourra ajouter un bouton "Menu" plus tard si besoin */
+    main {
+        margin-left: 0 !important;
+        padding: 10px;
+    }
 }
     </style>
 </head>
@@ -854,7 +867,17 @@ document.querySelectorAll('aside nav button').forEach(btn => {
         if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
 }
+ </script>
 
-    </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker enregistré !'))
+        .catch(err => console.log('Erreur SW:', err));
+    });
+  }
+</script>
+    
 </body>
 </html>
