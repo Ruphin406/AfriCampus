@@ -68,6 +68,33 @@
             .text-emerald-400 { color: #059669 !important; font-weight: bold !important; }
             .text-red-400 { color: #dc2626 !important; font-weight: bold !important; }
         }
+        /* Styles pour mobile */
+        @media (max-width: 768px) {
+        /* Cache le menu à gauche par défaut */
+        aside {
+        position: fixed;
+        left: -100%; /* Sort de l'écran */
+        top: 0;
+        bottom: 0;
+        z-index: 50;
+        width: 80%;
+        transition: 0.3s;
+    }
+
+        /* Classe pour afficher le menu quand on clique */
+        aside.active {
+        left: 0;
+    }
+
+        /* Bouton pour ouvrir le menu (invisible sur PC) */
+        #mobile-menu-btn {
+        display: block !important;
+    }
+}
+
+    #mobile-menu-btn {
+    display: none;
+}
     </style>
 </head>
 <body class="h-screen flex">
@@ -125,6 +152,10 @@
     <div id="modal-container" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
         <div id="modal-content" class="glass p-8 rounded-3xl w-full max-w-lg fade-in"></div>
     </div>
+
+    <button id="mobile-menu-btn" onclick="toggleSidebar()" class="fixed top-4 left-4 z-[60] bg-blue-600 p-3 rounded-lg text-white shadow-lg">
+    <i class="fas fa-bars"></i>
+    </button>
 
     <script>
     
@@ -807,6 +838,22 @@ function confirmRegistration() {
         </div>`;
 }
 
+        function toggleSidebar() {
+    const sidebar = document.querySelector('aside');
+    sidebar.classList.toggle('active');
+}
+
+// Optionnel : Fermer le menu automatiquement quand on clique sur un lien (sur mobile)
+document.querySelectorAll('aside nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+            toggleSidebar();
+        }
+    });
+});
+        if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
 
     </script>
 </body>
