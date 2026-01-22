@@ -1,8 +1,10 @@
-self.addEventListener('install', (e) => {
-  console.log('Service Worker Installé');
+const CACHE_NAME = 'lumina-cache-v1';
+
+self.addEventListener('install', (event) => {
+    console.log('Service Worker: Installé');
 });
 
-self.addEventListener('fetch', (e) => {
-  // Permet le fonctionnement hors-ligne basique
-  e.respondWith(fetch(e.request));
+self.addEventListener('fetch', (event) => {
+    // Permet à l'application de fonctionner même avec une connexion instable
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });
