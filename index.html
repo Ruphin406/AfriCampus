@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // ICI : Collez le bloc firebaseConfig que vous avez copié à l'étape 1
+ const firebaseConfig = {
+  apiKey: "AIzaSyD_9CnOjG-dEpnZ_pfQ7KKTOvYEludkA24",
+  authDomain: "africampus-58801.firebaseapp.com",
+  projectId: "africampus-58801",
+  storageBucket: "africampus-58801.firebasestorage.app",
+  messagingSenderId: "315173780481",
+  appId: "1:315173780481:web:82cf5c50e7980a5ad05400",
+  measurementId: "G-R5FBED84FN"
+};
+
+  // Initialisation
+  const app = initializeApp(firebaseConfig);
+  const db_cloud = getFirestore(app);
+
+  // --- LA MAGIE : Synchro en temps réel ---
+  
+  // Cette fonction envoie vos données locales vers Google Cloud
+  window.saveToCloud = async function() {
+      await setDoc(doc(db_cloud, "system", "database"), db);
+  };
+
+  // Cette fonction écoute si quelqu'un d'autre a modifié les données
+  onSnapshot(doc(db_cloud, "system", "database"), (snapshot) => {
+      if (snapshot.exists()) {
+          db = snapshot.data();
+          localStorage.setItem('lumina_db', JSON.stringify(db));
+          if(typeof updateUI === "function") updateUI(); 
+      }
+  });
+</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AfriCampus Manager 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Lumina">
+    <meta name="apple-mobile-web-app-title" content="Lumina">
+    <meta name="theme-color" content="#020617">
+    <meta name="msapplication-navbutton-color" content="#020617">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; overflow: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- STYLE POUR L'IMPRESSION DU BULLETIN --- */
+        @media print {
+            body { background: white !important; color: black !important; overflow: visible !important; }
+            aside, header, .no-print, button { display: none !important; }
+            main { padding: 0 !important; margin: 0 !important; width: 100% !important; }
+            #main-content { padding: 0 !important; }
+            .glass { background: white !important; border: 1px solid #eee !important; box-shadow: none !important; color: black !important; }
+            .text-white, .text-slate-400, .text-slate-500 { color: black !important; }
+            .bg-slate-900\/40 { background: #f8fafc !important; border: 1px solid #ddd !important; }
+            .text-emerald-400 { color: #059669 !important; font-weight: bold !important; }
+            .text-red-400 { color: #dc2626 !important; font-weight: bold !important; }
+        }
+    </style>
+</head>
+<body class="h-screen flex">
+
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950">
+        <div class="glass p-10 rounded-3xl w-full max-w-md border border-slate-800 shadow-2xl">
+            <div class="text-center mb-10">
+                <div class="w-20 h-20 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+                    <i class="far fa-paper-plane text-3xl text-blue-400"></i>
+                </div>
+                <h1 class="text-3xl font-bold tracking-tight">AfriCampus</h1>
+                <p class="text-slate-400 mt-2">Manager en gestion academique 2026</p>
+            </div>
+            <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-5">
+                <input type="text" id="username" placeholder="Identifiant" class="w-full bg-slate-900/50 border border-slate-700 p-4 rounded-xl outline-none focus:border-blue-500 transition" required>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition shadow-lg shadow-blue-900/20">Se connecter</button>
+                <div class="text-center mt-6">
+                 <button type="button" onclick="openRegisterModal()" class="text-blue-400 hover:text-blue-300 text-sm underline bg-transparent border-none cursor-pointer">
+                Pas encore de matricule ? S'inscrire ici
+             </button>
+            </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-layout" class="hidden flex w-full h-full">
+        <aside class="w-72 glass border-r border-slate-800 flex flex-col p-6">
+            <div class="flex items-center gap-3 mb-12 px-2">
+                <i class="far fa-gem text-blue-500 text-2xl"></i>
+                <span class="text-xl font-bold tracking-widest">AfriCampus</span>
+            </div>
+            <nav id="nav-menu" class="flex-1 space-y-2"></nav>
+            <div class="pt-6 border-t border-slate-800">
+                <button onclick="logout()" class="flex items-center gap-3 text-slate-400 hover:text-red-400 w-full px-4 py-2 transition">
+                    <i class="far fa-arrow-alt-circle-left"></i> Déconnexion
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col">
+            <header class="h-20 flex items-center justify-between px-10 border-b border-slate-800">
+                <h2 id="page-title" class="text-xl font-semibold text-slate-200">Tableau de bord</h2>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <p id="user-name" class="text-sm font-bold">Utilisateur</p>
+                        <p id="user-role" class="text-xs text-slate-500 uppercase">Rôle</p>
+                    </div>
+                    <div id="user-avatar" class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold"></div>
+                </div>
+            </header>
+            <div id="main-content" class="p-10 overflow-y-auto"></div>
+        </main>
+    </div>
+
+    <div id="modal-container" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div id="modal-content" class="glass p-8 rounded-3xl w-full max-w-lg fade-in"></div>
+    </div>
+
+    <script>
+    
+       // --- 1. CONFIGURATION & DONNÉES INITIALES ---
+const FACULTIES = ["Informatique et gestion", "Telecommunication", "Genie civil", "Medecine", "Droit", "Criminologie", "Mine"];
+
+const INITIAL_DB = {
+    users: [
+        { id: 1, username: 'admin', name: 'Admin AfriCampus', role: 'admin', avatar: 'A' },
+        { id: 2, username: 'prof', name: 'Dr. Kwibe', role: 'teacher', avatar: 'RK' },
+        { id: 101, username: '2026-001', name: 'Jean Kouassi', role: 'student', avatar: 'JK' }
+    ],
+    payments: [], // Stockera {id, studentId, amount, date, method, reference}
+    students: [{ 
+        id: 101, 
+        name: 'Jean Kouassi', 
+        matricule: '2026-001', 
+        faculty: 'Informatique et gestion', 
+        feesPaid: false, 
+        email: 'jean.kouassi@africampus.edu' 
+    }],
+    grades: [],
+    library: [],
+    news: [
+        { id: 1, title: "Bienvenue", content: "Lancement officiel d'AfriCampus 2026.", date: "21/01/2026" },
+    ]
+};
+
+let db = JSON.parse(localStorage.getItem('lumina_db')) || INITIAL_DB;
+let currentUser = null;
+let currentTempGrades = []; 
+
+// LA FONCTION SAVE CORRIGÉE
+ const save = () => {
+ localStorage.setItem('lumina_db', JSON.stringify(db));
+ if (window.saveToCloud) window.saveToCloud(); 
+};
+
+// --- 2. SYSTÈME DE CONNEXION ---
+function handleLogin() {
+    const val = document.getElementById('username').value.trim();
+    const user = db.users.find(u => u.username === val);
+
+    if (user) {
+        currentUser = user;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('dashboard-layout').classList.remove('hidden');
+        updateUI();
+        navigate('dashboard');
+    } else {
+        alert("Identifiant ou Matricule inconnu.");
+    }
+}
+
+function logout() { location.reload(); }
+
+// --- 3. NAVIGATION & INTERFACE ---
+function updateUI() {
+    document.getElementById('user-name').textContent = currentUser.name;
+    document.getElementById('user-role').textContent = currentUser.role === 'admin' ? 'Direction' : (currentUser.role === 'teacher' ? 'Professeur' : 'Étudiant');
+
+    
+    // Avatar avec photo si elle existe
+    const avatarBox = document.getElementById('user-avatar');
+    if (currentUser.photo) {
+        avatarBox.innerHTML = `<img src="${currentUser.photo}" class="w-full h-full rounded-full object-cover">`;
+    } else {
+        avatarBox.textContent = currentUser.avatar || currentUser.name.charAt(0);
+    }
+    
+    const nav = document.getElementById('nav-menu');
+    const links = [
+        { id: 'dashboard', label: 'Tableau de Bord', icon: 'fas fa-th-large', roles: ['admin', 'teacher', 'student'] },
+        { id: 'annuaire', label: 'Gestion Académique', icon: 'fas fa-users-cog', roles: ['admin'] },
+        { id: 'library', label: 'AfriCampus Library', icon: 'fas fa-book', roles: ['admin', 'teacher', 'student'] },
+        { id: 'results', label: 'Saisie des Notes', icon: 'fas fa-marker', roles: ['teacher', 'admin'] },
+        { id: 'my-grades', label: 'Mes Résultats', icon: 'fas fa-user-graduate', roles: ['student'] },
+        { id: 'profile', label: 'Mon Profil', icon: 'fas fa-user-circle', roles: ['admin', 'teacher', 'student'] },
+        { id: 'schedule', label: 'Emploi du Temps', icon: 'fas fa-calendar-alt', roles: ['admin', 'teacher', 'student'] },
+        { id: 'finance', label: 'Finances', icon: 'fas fa-wallet', roles: ['admin', 'student'] }
+    ];
+
+    nav.innerHTML = links.filter(l => l.roles.includes(currentUser.role)).map(l => `
+        <button onclick="navigate('${l.id}')" class="w-full flex items-center gap-4 px-5 py-4 text-slate-400 hover:text-white hover:bg-blue-600/10 transition rounded-xl mb-1">
+            <i class="${l.icon} w-5"></i> <span class="text-sm font-medium">${l.label}</span>
+        </button>
+    `).join('');
+}
+
+function navigate(pageId) {
+    const main = document.getElementById('main-content');
+    document.getElementById('page-title').innerHTML = `<span class="text-blue-500 font-bold">AfriCampus</span>| ${pageId.toUpperCase()}`;
+    main.innerHTML = '';
+
+    switch(pageId) {
+        case 'dashboard': renderDashboard(main); break;
+        case 'annuaire': renderTrombinoscope(); break; 
+        case 'library': renderLibrary(); break;
+        case 'results': renderResultsTable(main); break;
+        case 'my-grades': renderStudentGrades(main); break;
+        case 'profile': renderUserProfile(main); break;
+        case 'schedule': renderSchedule(main); break;
+        case 'finance': renderFinance(main); break;
+    }
+}
+
+// --- 4. MODULES DE RENDU ---
+
+function renderDashboard(container) {
+    // Sécurité : s'assurer que db.news existe
+    if (!db.news) db.news = [];
+
+    const totalStudents = db.students ? db.students.length : 0;
+    const totalProfs = db.users ? db.users.filter(u => u.role === 'teacher').length : 0;
+    const paid = db.students ? db.students.filter(s => s.feesPaid).length : 0;
+    const totalSyllabus = db.library ? db.library.length : 0;
+
+    container.innerHTML = `
+        <div class="mb-8 space-y-4">
+            ${db.news.map(n => `
+                <div class="glass p-4 rounded-2xl border-l-4 border-l-blue-500 flex justify-between items-center fade-in text-white">
+                    <div>
+                        <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">${n.date}</span>
+                        <h4 class="font-semibold">${n.title}</h4>
+                        <p class="text-slate-400 text-sm">${n.content}</p>
+                    </div>
+                    ${currentUser.role === 'admin' ? `<button onclick="deleteNews(${n.id})" class="text-slate-600 hover:text-red-500 px-2"><i class="fas fa-times"></i></button>` : ''}
+                </div>
+            `).join('')}
+            
+            ${currentUser.role === 'admin' ? `
+                <button onclick="openNewsModal()" class="w-full py-3 border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 hover:border-blue-500 hover:text-blue-500 transition text-sm font-medium">
+                    + Publier une annonce officielle
+                </button>` : ''}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 fade-in text-white">
+            <div class="glass p-6 rounded-3xl border-slate-800">
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Étudiants</p>
+                <h3 class="text-3xl font-bold mt-2">${totalStudents}</h3>
+            </div>
+            <div class="glass p-6 rounded-3xl border-slate-800">
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Professeurs</p>
+                <h3 class="text-3xl font-bold mt-2 text-blue-400">${totalProfs}</h3>
+            </div>
+            <div class="glass p-6 rounded-3xl border-slate-800">
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">En règle (Frais)</p>
+                <h3 class="text-3xl font-bold mt-2 text-emerald-500">${paid}</h3>
+            </div>
+            <div class="glass p-6 rounded-3xl border-slate-800">
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Syllabus</p>
+                <h3 class="text-3xl font-bold mt-2 text-purple-400">${totalSyllabus}</h3>
+            </div>
+        </div>
+    `;
+}
+
+function renderUserProfile(container) {
+    const sInfo = db.students.find(s => s.id === currentUser.id) || {};
+    container.innerHTML = `
+        <div class="max-w-4xl mx-auto fade-in text-white">
+            <div class="glass rounded-[40px] overflow-hidden border-slate-800">
+                <div class="h-32 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+                <div class="px-10 pb-10">
+                    <div class="flex flex-col md:flex-row gap-8 items-end -mt-16 mb-8">
+                        <div class="relative group">
+                            <img src="${currentUser.photo || 'https://ui-avatars.com/api/?name='+currentUser.name+'&background=0D8ABC&color=fff&size=128'}" 
+                                 class="w-32 h-32 rounded-3xl border-4 border-slate-950 object-cover shadow-2xl">
+                            <button onclick="changePhoto()" class="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs">
+                                <i class="fas fa-camera mr-2"></i> Modifier
+                            </button>
+                        </div>
+                        <div class="flex-1 pb-2">
+                            <h3 class="text-3xl font-bold">${currentUser.name}</h3>
+                            <p class="text-blue-400 font-medium">${sInfo.faculty || 'Membre Lumina Academia'}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass p-6 rounded-2xl border-slate-800/50">
+                            <p class="text-xs text-slate-500 uppercase font-bold mb-4 tracking-widest">Identité</p>
+                            <div class="space-y-4">
+                                <div><p class="text-xs text-slate-500">Matricule</p><p class="font-mono">${currentUser.username}</p></div>
+                                <div><p class="text-xs text-slate-500">Rôle</p><p class="capitalize">${currentUser.role}</p></div>
+                            </div>
+                        </div>
+                        <div class="glass p-6 rounded-2xl border-slate-800/50">
+                            <p class="text-xs text-slate-500 uppercase font-bold mb-4 tracking-widest">Statut Financier</p>
+                            <div class="flex items-center gap-4">
+                                <i class="fas ${sInfo.feesPaid ? 'fa-check-circle text-emerald-500' : 'fa-times-circle text-red-500'} text-3xl"></i>
+                                <div>
+                                    <p class="font-bold">${sInfo.feesPaid ? 'Scolarité réglée' : 'Paiement en attente'}</p>
+                                    <p class="text-xs text-slate-500">Année Académique 2026</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+
+function changePhoto() {
+    const url = prompt("Entrez l'URL de votre photo :");
+    if(url) {
+        currentUser.photo = url;
+        const idx = db.users.findIndex(u => u.id === currentUser.id);
+        if(idx !== -1) db.users[idx].photo = url;
+        save();
+        updateUI();
+        renderUserProfile(document.getElementById('main-content'));
+    }
+}
+
+// --- GARDER LES AUTRES FONCTIONS (Trombinoscope, Results, Library, Modal) ---
+function renderTrombinoscope() {
+    const container = document.getElementById('main-content');
+    container.innerHTML = `
+        <div class="flex justify-between items-center mb-8 fade-in text-white">
+            <h2 class="text-2xl font-bold">Registre Lumina</h2>
+            <button onclick="openAddUserModal()" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-xl font-bold transition">
+                <i class="fas fa-user-plus mr-2"></i> Nouvel Utilisateur
+            </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 fade-in text-white">
+            ${db.students.map(s => `
+                <div class="glass p-6 rounded-3xl border-slate-800">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="font-bold text-blue-400 font-mono text-xs">${s.matricule}</div>
+                        <span onclick="toggleFees(${s.id})" class="cursor-pointer px-3 py-1 rounded-full text-[10px] font-bold ${s.feesPaid ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}">
+                            ${s.feesPaid ? 'PAYÉ' : 'NON EN RÈGLE'}
+                        </span>
+                    </div>
+                    <h4 class="text-xl font-bold">${s.name}</h4>
+                    <p class="text-sm text-slate-500">${s.faculty}</p>
+                    <div class="mt-4 pt-4 border-t border-slate-800 flex justify-end">
+                         <button onclick="deleteUser(${s.id})" class="text-slate-600 hover:text-red-500 transition text-xs"><i class="far fa-trash-alt"></i></button>
+                    </div>
+                </div>`).join('')}
+        </div>`;
+}
+
+function toggleFees(id) {
+    const s = db.students.find(st => st.id === id);
+    if(s) { s.feesPaid = !s.feesPaid; save(); renderTrombinoscope(); }
+}
+
+function renderResultsTable(container) {
+    currentTempGrades = []; 
+    container.innerHTML = `
+        <div class="space-y-6 fade-in text-white">
+            <div class="glass p-6 rounded-3xl border-slate-800 flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[150px]">
+                    <label class="text-[10px] text-slate-500 uppercase font-bold mb-2 block tracking-widest">Semestre</label>
+                    <select id="sel-sem" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl outline-none text-white">
+                        <option value="1">Semestre 1</option>
+                        <option value="2">Semestre 2</option>
+                    </select>
+                </div>
+                <div class="flex-2 min-w-[250px]">
+                    <label class="text-[10px] text-slate-500 uppercase font-bold mb-2 block tracking-widest">Matière</label>
+                    <input type="text" id="sel-subject" placeholder="Nom du cours" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl outline-none text-white">
+                </div>
+            </div>
+            <div class="glass rounded-3xl overflow-hidden border-slate-800">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-900/50 text-slate-500 text-[10px] uppercase tracking-widest">
+                        <tr><th class="p-5">Étudiant</th><th class="p-5">Matricule</th><th class="p-5 text-center">Note / 100</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        ${db.students.map(s => `
+                            <tr>
+                                <td class="p-5 text-sm font-medium text-slate-200">${s.name}</td>
+                                <td class="p-5 text-blue-500 font-mono text-xs">${s.matricule}</td>
+                                <td class="p-5 text-center">
+                                    <input type="number" onchange="storeGrade(${s.id}, this.value)" class="w-24 bg-slate-900 border border-slate-700 p-2 rounded-lg text-center font-bold text-emerald-400">
+                                </td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end"><button onclick="submitGrades()" class="bg-blue-600 px-10 py-4 rounded-2xl font-bold text-white">Publier</button></div>
+        </div>`;
+}
+
+function storeGrade(studentId, val) {
+    let note = parseFloat(val) || 0;
+    if (note > 100) note = 100;
+    const idx = currentTempGrades.findIndex(g => g.studentId === studentId);
+    if(idx > -1) currentTempGrades[idx].note = note;
+    else currentTempGrades.push({ studentId, note });
+}
+
+function submitGrades() {
+    const subject = document.getElementById('sel-subject').value.trim();
+    const sem = parseInt(document.getElementById('sel-sem').value);
+    if(!subject || currentTempGrades.length === 0) return alert("Remplissez tout.");
+    currentTempGrades.forEach(g => {
+        db.grades.push({ id: Date.now() + Math.random(), studentId: g.studentId, note: g.note, subject, semestre: sem, prof: currentUser.name, date: new Date().toLocaleDateString('fr-FR') });
+    });
+    save(); alert("Points publiés !"); navigate('dashboard');
+}
+
+function renderStudentGrades(container) {
+    const sInfo = db.students.find(s => s.id === currentUser.id);
+    if (!sInfo.feesPaid) {
+        container.innerHTML = `<div class="glass p-20 rounded-3xl text-center border-red-500/30 text-white"><i class="fas fa-lock text-5xl text-red-500 mb-6"></i><h2 class="text-2xl font-bold">Accès Verrouillé</h2><p class="text-slate-400 mt-2">Régularisez vos frais.</p></div>`;
+        return;
+    }
+    
+    const myGrades = db.grades.filter(g => g.studentId === currentUser.id);
+    const average = myGrades.length > 0 ? (myGrades.reduce((acc, curr) => acc + curr.note, 0) / myGrades.length).toFixed(1) : 0;
+
+    container.innerHTML = `
+        <div class="space-y-8 text-white fade-in">
+            <div class="flex justify-between items-end">
+                <div><h2 class="text-3xl font-bold">Vos Résultats</h2><p class="text-slate-500">${myGrades.length} Matières</p></div>
+                <div class="text-right"><span class="text-5xl font-mono font-bold ${average >= 50 ? 'text-emerald-400' : 'text-red-400'}">${average}%</span></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="glass p-6 rounded-3xl border-slate-800"><h3 class="text-blue-500 text-xs font-bold uppercase mb-6">Semestre 1</h3>${renderGradeList(myGrades.filter(g => g.semestre === 1))}</div>
+                <div class="glass p-6 rounded-3xl border-slate-800"><h3 class="text-emerald-500 text-xs font-bold uppercase mb-6">Semestre 2</h3>${renderGradeList(myGrades.filter(g => g.semestre === 2))}</div>
+            </div>
+        </div>`;
+
+}
+
+function renderGradeList(grades) {
+    if (grades.length === 0) return `<p class="text-xs italic text-slate-600">Aucune note.</p>`;
+    return grades.map(g => `
+        <div class="flex justify-between items-center p-4 bg-slate-900/40 rounded-2xl mb-2 border border-slate-800/50">
+            <div><h4 class="text-sm font-bold">${g.subject}</h4><p class="text-[9px] text-slate-500">Par ${g.prof}</p></div>
+            <div class="text-right"><span class="text-lg font-bold ${g.note >= 50 ? 'text-emerald-400' : 'text-red-400'}">${Math.round(g.note)}</span><span class="text-[10px] text-slate-600 block">/ 100</span></div>
+        </div>`).join('');
+}
+
+function renderLibrary() {
+    const container = document.getElementById('main-content');
+    container.innerHTML = `
+        <div class="space-y-6 text-white">
+            <div class="flex justify-between items-center"><h2 class="text-xl font-bold">Lumina Library</h2>
+            ${currentUser.role !== 'student' ? `<button onclick="openLibModal()" class="bg-blue-600 px-4 py-2 rounded-xl text-xs font-bold">+ Syllabus</button>` : ''}</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                ${db.library.map(lib => `<div class="glass p-6 rounded-3xl border-slate-800"><i class="fas fa-file-pdf text-blue-500 mb-4"></i><h4 class="font-bold">${lib.title}</h4><p class="text-[10px] text-slate-500">${lib.faculty}</p><a href="${lib.link}" target="_blank" class="block mt-4 text-center bg-slate-800 p-2 rounded-xl text-xs">Ouvrir</a></div>`).join('')}
+            </div>
+        </div>`;
+}
+
+function openLibModal() {
+    const modal = document.getElementById('modal-container');
+    document.getElementById('modal-content').innerHTML = `
+        <div class="space-y-4 text-white"><h3 class="text-xl font-bold">Nouveau Syllabus</h3>
+            <input type="text" id="lib-t" placeholder="Titre" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            <select id="lib-f" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">${FACULTIES.map(f => `<option value="${f}">${f}</option>`).join('')}</select>
+            <input type="url" id="lib-l" placeholder="Lien URL" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            <button onclick="saveLib()" class="w-full bg-blue-600 py-4 rounded-xl font-bold">Enregistrer</button>
+            <button onclick="closeModal()" class="w-full text-slate-500">Annuler</button>
+        </div>`;
+    modal.classList.remove('hidden');
+}
+
+function saveLib() {
+    const title = document.getElementById('lib-t').value;
+    const fac = document.getElementById('lib-f').value;
+    const link = document.getElementById('lib-l').value;
+    if(!title || !link) return alert("Remplissez tout");
+    db.library.push({ id: Date.now(), title, faculty: fac, link, author: currentUser.name });
+    save(); closeModal(); renderLibrary();
+}
+
+function openAddUserModal() {
+    const modal = document.getElementById('modal-container');
+    document.getElementById('modal-content').innerHTML = `
+        <div class="space-y-4 text-white"><h3 class="text-xl font-bold">Nouvel Utilisateur</h3>
+            <input type="text" id="new-name" placeholder="Nom Complet" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            <input type="text" id="new-username" placeholder="Identifiant/Matricule" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            <select id="new-role" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white"><option value="student">Étudiant</option><option value="teacher">Professeur</option></select>
+            <button onclick="createNewUser()" class="w-full bg-blue-600 py-4 rounded-xl font-bold">Créer</button>
+            <button onclick="closeModal()" class="w-full text-slate-500">Annuler</button>
+        </div>`;
+    modal.classList.remove('hidden');
+}
+
+function createNewUser() {
+    const name = document.getElementById('new-name').value;
+    const username = document.getElementById('new-username').value;
+    const role = document.getElementById('new-role').value;
+    if(!name || !username) return alert("Champs vides");
+    const newId = Date.now();
+    db.users.push({ id: newId, username, name, role, avatar: name.charAt(0) });
+    if(role === 'student') db.students.push({ id: newId, name, matricule: username, faculty: "Général", feesPaid: false });
+    save(); closeModal(); renderTrombinoscope();
+}
+
+function deleteUser(id) {
+    if(confirm("Supprimer ?")) {
+        db.users = db.users.filter(u => u.id !== id);
+        db.students = db.students.filter(s => s.id !== id);
+        save(); renderTrombinoscope();
+    }
+}
+
+function closeModal() { document.getElementById('modal-container').classList.add('hidden'); }
+
+function openNewsModal() {
+    const modal = document.getElementById('modal-container');
+    document.getElementById('modal-content').innerHTML = `
+        <div class="space-y-4 text-white">
+            <h3 class="text-xl font-bold">Nouvelle Annonce</h3>
+            <input type="text" id="news-title" placeholder="Titre de l'info" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <textarea id="news-content" placeholder="Message..." class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 h-32 text-white"></textarea>
+            <button onclick="saveNews()" class="w-full bg-blue-600 py-4 rounded-xl font-bold">Diffuser</button>
+            <button onclick="closeModal()" class="w-full text-slate-500">Annuler</button>
+        </div>`;
+    modal.classList.remove('hidden');
+}
+
+function saveNews() {
+    const title = document.getElementById('news-title').value;
+    const content = document.getElementById('news-content').value;
+    if(!title || !content) return;
+    db.news.unshift({ id: Date.now(), title, content, date: new Date().toLocaleDateString('fr-FR') });
+    save(); closeModal(); renderDashboard(document.getElementById('main-content'));
+}
+
+function deleteNews(id) {
+    db.news = db.news.filter(n => n.id !== id);
+    save(); renderDashboard(document.getElementById('main-content'));
+}
+
+function renderSchedule(container) {
+    // Si la base de données n'a pas encore de planning, on l'initialise
+    if (!db.schedule) db.schedule = [];
+
+    const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+    
+    container.innerHTML = `
+        <div class="space-y-6 fade-in text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold">Planning Hebdomadaire</h2>
+                    <p class="text-slate-500 text-sm">Organisation des cours - Semestre en cours</p>
+                </div>
+                ${currentUser.role === 'admin' ? `
+                    <button onclick="openScheduleModal()" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-xl font-bold transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Ajouter un cours
+                    </button>
+                ` : ''}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                ${days.map(day => `
+                    <div class="space-y-4">
+                        <div class="glass p-3 rounded-xl border-slate-800 text-center font-bold text-blue-400 uppercase text-[10px] tracking-widest bg-slate-900/50">
+                            ${day}
+                        </div>
+                        <div class="space-y-3">
+                            ${db.schedule.filter(s => s.day === day).length > 0 
+                                ? db.schedule.filter(s => s.day === day)
+                                    .sort((a,b) => a.time.localeCompare(b.time))
+                                    .map(item => `
+                                    <div class="glass p-4 rounded-2xl border-slate-800 hover:border-blue-500/50 transition relative group">
+                                        <p class="text-[10px] font-bold text-slate-500">${item.time}</p>
+                                        <h4 class="text-sm font-bold mt-1 text-slate-200">${item.subject}</h4>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <i class="fas fa-map-marker-alt text-[9px] text-blue-500"></i>
+                                            <span class="text-[10px] text-slate-400">${item.room}</span>
+                                        </div>
+                                        ${currentUser.role === 'admin' ? `
+                                            <button onclick="deleteScheduleItem(${item.id})" class="absolute top-2 right-2 text-slate-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition text-[10px]">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                `).join('')
+                                : `<p class="text-center text-[10px] text-slate-700 italic py-4">Pas de cours</p>`
+                            }
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+}
+
+function openScheduleModal() {
+    const modal = document.getElementById('modal-container');
+    document.getElementById('modal-content').innerHTML = `
+        <div class="space-y-4 text-white">
+            <h3 class="text-xl font-bold">Programmer un cours</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <select id="sch-day" class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+                    <option>Lundi</option><option>Mardi</option><option>Mercredi</option>
+                    <option>Jeudi</option><option>Vendredi</option><option>Samedi</option>
+                </select>
+                <input type="time" id="sch-time" class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            </div>
+            <input type="text" id="sch-subject" placeholder="Intitulé du cours" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            <input type="text" id="sch-room" placeholder="Salle (ex: Local 102)" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            <button onclick="saveSchedule()" class="w-full bg-blue-600 py-4 rounded-xl font-bold hover:bg-blue-700 transition">Enregistrer</button>
+            <button onclick="closeModal()" class="w-full text-slate-500 text-sm">Annuler</button>
+        </div>`;
+    modal.classList.remove('hidden');
+}
+
+function saveSchedule() {
+    const day = document.getElementById('sch-day').value;
+    const time = document.getElementById('sch-time').value;
+    const subject = document.getElementById('sch-subject').value;
+    const room = document.getElementById('sch-room').value;
+
+    if(!time || !subject || !room) return alert("Veuillez tout remplir");
+
+    if(!db.schedule) db.schedule = [];
+    db.schedule.push({ id: Date.now(), day, time, subject, room });
+    save();
+    closeModal();
+    renderSchedule(document.getElementById('main-content'));
+}
+
+function deleteScheduleItem(id) {
+    db.schedule = db.schedule.filter(s => s.id !== id);
+    save();
+    renderSchedule(document.getElementById('main-content'));
+}
+
+function renderFinance(container) {
+    if (!db.payments) db.payments = [];
+    
+    // Si c'est un étudiant, on filtre ses paiements, sinon l'admin voit tout
+    const myPayments = currentUser.role === 'student' 
+        ? db.payments.filter(p => p.studentId === currentUser.id)
+        : db.payments;
+
+    const totalPaid = myPayments.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+
+    container.innerHTML = `
+        <div class="space-y-8 fade-in text-white">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold">Portefeuille Numérique</h2>
+                    <p class="text-slate-500 text-sm">Suivi des frais académiques 2025-2026</p>
+                </div>
+                ${currentUser.role === 'admin' ? `
+                    <button onclick="openPaymentModal()" class="bg-emerald-600 hover:bg-emerald-700 px-6 py-2 rounded-xl font-bold transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Enregistrer un versement
+                    </button>
+                ` : ''}
+            </div>
+
+            <div class="glass p-8 rounded-[32px] border-slate-800 bg-gradient-to-br from-slate-900 to-blue-900/20 relative overflow-hidden">
+                <div class="relative z-10">
+                    <p class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Total versé</p>
+                    <h3 class="text-5xl font-black">${totalPaid} $</h3>
+                    <p class="text-slate-400 mt-4 text-sm italic">Note : Le minerval complet est fixé à 600 $</p>
+                </div>
+                <i class="fas fa-university absolute -right-4 -bottom-4 text-9xl text-white/5"></i>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-lg font-bold">Historique des transactions</h3>
+                <div class="glass rounded-3xl overflow-hidden border-slate-800">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-900/50 text-[10px] uppercase text-slate-500 font-bold tracking-widest">
+                            <tr>
+                                <th class="p-5">Date</th>
+                                <th class="p-5">Libellé</th>
+                                <th class="p-5">Référence</th>
+                                <th class="p-5 text-right">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 text-sm">
+                            ${myPayments.length > 0 ? myPayments.map(p => `
+                                <tr class="hover:bg-white/5 transition">
+                                    <td class="p-5 text-slate-400">${p.date}</td>
+                                    <td class="p-5 font-bold">${p.method}</td>
+                                    <td class="p-5 font-mono text-xs text-blue-400">${p.reference}</td>
+                                    <td class="p-5 text-right font-bold text-emerald-400">+ ${p.amount} $</td>
+                                </tr>
+                            `).join('') : `<tr><td colspan="4" class="p-10 text-center text-slate-500 italic">Aucune transaction enregistrée</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`;
+}
+
+function openPaymentModal() {
+    const modal = document.getElementById('modal-container');
+    document.getElementById('modal-content').innerHTML = `
+        <div class="space-y-4 text-white">
+            <h3 class="text-xl font-bold">Nouveau Versement</h3>
+            <select id="pay-student" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800">
+                ${db.students.map(s => `<option value="${s.id}">${s.name} (${s.matricule})</option>`).join('')}
+            </select>
+            <input type="number" id="pay-amount" placeholder="Montant en Dollars ($)" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <select id="pay-method" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <option>Banque (Virement)</option>
+                <option>Mobile Money</option>
+                <option>Espèces (Caisse)</option>
+            </select>
+            <input type="text" id="pay-ref" placeholder="Numéro de reçu / Référence" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <button onclick="savePayment()" class="w-full bg-emerald-600 py-4 rounded-xl font-bold">Confirmer le paiement</button>
+            <button onclick="closeModal()" class="w-full text-slate-500">Annuler</button>
+        </div>`;
+    modal.classList.remove('hidden');
+}
+
+function savePayment() {
+    const studentId = parseInt(document.getElementById('pay-student').value);
+    const amount = document.getElementById('pay-amount').value;
+    const method = document.getElementById('pay-method').value;
+    const reference = document.getElementById('pay-ref').value;
+
+    if(!amount || !reference) return alert("Champs obligatoires !");
+
+    db.payments.push({
+        id: Date.now(),
+        studentId,
+        amount,
+        method,
+        reference,
+        date: new Date().toLocaleDateString('fr-FR')
+    });
+
+    save();
+    closeModal();
+    renderFinance(document.getElementById('main-content'));
+}
+
+function openRegisterModal() {
+    const modal = document.getElementById('modal-container');
+    document.getElementById('modal-content').innerHTML = `
+        <div class="space-y-4 text-white">
+            <h3 class="text-2xl font-bold">Nouvelle Inscription</h3>
+            <p class="text-slate-400 text-xs">Entrez votre nom pour générer votre matricule officiel.</p>
+            
+            <input type="text" id="reg-name" placeholder="Nom complet" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+            
+            <select id="reg-faculty" class="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 text-white">
+                <option value="">Choisir une faculté</option>
+                ${FACULTIES.map(f => `<option value="${f}">${f}</option>`).join('')}
+            </select>
+
+            <button onclick="confirmRegistration()" class="w-full bg-blue-600 py-4 rounded-xl font-bold hover:bg-blue-700 transition">
+                Créer mon compte
+            </button>
+            <button onclick="closeModal()" class="w-full text-slate-500 text-xs">Annuler</button>
+        </div>`;
+    modal.classList.remove('hidden');
+}
+
+function confirmRegistration() {
+    const name = document.getElementById('reg-name').value.trim();
+    const faculty = document.getElementById('reg-faculty').value;
+
+    if (!name || !faculty) return alert("Remplissez tous les champs !");
+
+    // Génération du matricule automatique
+    const year = new Date().getFullYear();
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const matricule = `${year}-LUM-${randomNum}`;
+    const newId = Date.now();
+
+    // Ajout dans la base de données
+    db.users.push({ id: newId, username: matricule, name: name, role: 'student', avatar: name.charAt(0) });
+    db.students.push({ id: newId, name: name, matricule: matricule, faculty: faculty, feesPaid: false });
+
+    save(); // On enregistre dans le localStorage
+
+    // Affichage du matricule à l'étudiant
+    document.getElementById('modal-content').innerHTML = `
+        <div class="text-center space-y-6 py-4">
+            <i class="fas fa-check-circle text-emerald-500 text-5xl"></i>
+            <h3 class="text-xl font-bold">Inscription validée !</h3>
+            <p class="text-slate-400">Voici votre matricule de connexion :</p>
+            <div class="bg-blue-600/20 border border-blue-500/50 p-4 rounded-xl">
+                <span class="text-2xl font-mono font-bold text-blue-400">${matricule}</span>
+            </div>
+            <p class="text-[10px] text-red-400">⚠️ Notez-le bien, vous en aurez besoin pour vous connecter.</p>
+            <button onclick="closeModal()" class="w-full bg-slate-800 py-3 rounded-xl">J'ai compris</button>
+        </div>`;
+}
+
+
+    </script>
+</body>
+</html>
